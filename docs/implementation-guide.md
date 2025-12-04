@@ -90,29 +90,35 @@ Go 1.24でプロジェクトを初期化し、
 ## ステップ 1.2: 依存関係インストール
 
 ### やること
-- [ ] go.mod に依存関係追加
-- [ ] `go mod tidy` 実行
+- [ ] `go mod init` でモジュール初期化（既に完了している場合はスキップ）
+- [ ] モデル定義で使用する `github.com/lib/pq` を追加
 
-### 必要なパッケージ
-```go
-// go.mod
-require (
-    github.com/gin-gonic/gin v1.9.1
-    gorm.io/gorm v1.25.5
-    gorm.io/driver/postgres v1.5.4
-    github.com/aws/aws-sdk-go-v2 v1.24.0
-    github.com/aws/aws-sdk-go-v2/config v1.26.0
-    github.com/aws/aws-sdk-go-v2/service/sqs v1.29.0
-    github.com/go-resty/resty/v2 v2.11.0
-    github.com/PuerkitoBio/goquery v1.8.1
-    github.com/lib/pq v1.10.9
-)
+### 依存関係の追加方法
+
+**重要**: Goの依存関係管理は「必要になったら追加する」方式を推奨します。
+
+```bash
+# ステップ1.4でmodel/bookmark.goを作成する際に必要
+go get github.com/lib/pq
+
+# 依存関係を整理（go.sum作成・不要な依存関係を削除）
+go mod tidy
 ```
+
+### 今後の依存関係追加タイミング
+
+| Phase | ステップ | 追加する依存関係 |
+|-------|---------|-----------------|
+| Phase 1 | 1.4 | `github.com/lib/pq` |
+| Phase 2 | 2.1 | `gorm.io/gorm`, `gorm.io/driver/postgres` |
+| Phase 2 | 2.3 | `github.com/gin-gonic/gin` |
+| Phase 3 | 3.1 | `github.com/aws/aws-sdk-go-v2/...` |
+| Phase 3 | 3.3 | `github.com/go-resty/resty/v2`, `github.com/PuerkitoBio/goquery` |
 
 ### AIへの依頼プロンプト
 ```
 ステップ1.2を実装したいです。
-go.modファイルの内容と、依存関係をインストールするコマンドを教えてください。
+go.modの初期化と、model/bookmark.goで使用するgithub.com/lib/pqの追加方法を教えてください。
 ```
 
 ### 記録欄
@@ -120,7 +126,7 @@ go.modファイルの内容と、依存関係をインストールするコマ�
 |------|------|
 | 状態 | ✅ 完了 |
 | 完了日 | 2025-12-04 |
-| 備考 | go.modに依存関係追加済み（.goファイル作成後にgo mod tidyで自動追加される） |
+| 備考 | go.mod初期化完了。依存関係は必要になったら追加する方式で進める |
 
 ---
 
@@ -196,14 +202,23 @@ DB接続ファイルを作成してください。
 ## ステップ 2.1: Repository実装
 
 ### やること
+- [ ] GORM依存関係を追加
 - [ ] `repository/bookmark.go` 作成
 - [ ] CRUD操作の実装
+
+### 依存関係追加
+```bash
+go get gorm.io/gorm
+go get gorm.io/driver/postgres
+go mod tidy
+```
 
 ### AIへの依頼プロンプト
 ```
 ステップ2.1を実装したいです。
 docs/architecture/go-three-layer-architecture.md の repository/bookmark.go を参考に、
 リポジトリファイルを作成してください。
+GORMを使用するので、必要な依存関係も追加してください。
 ```
 
 ### 記録欄
@@ -241,15 +256,23 @@ FetchOgp, RefreshOldOgp, CheckDeadLinks は後で実装するのでスキップ�
 ## ステップ 2.3: Handler実装
 
 ### やること
+- [ ] Gin依存関係を追加
 - [ ] `handler/router.go` 作成
 - [ ] `handler/bookmark.go` 作成
 - [ ] `handler/health.go` 作成
+
+### 依存関係追加
+```bash
+go get github.com/gin-gonic/gin
+go mod tidy
+```
 
 ### AIへの依頼プロンプト
 ```
 ステップ2.3を実装したいです。
 docs/architecture/go-three-layer-architecture.md の handler/ 配下のファイルを参考に、
 HTTPハンドラーを作成してください。
+Ginフレームワークを使用するので、必要な依存関係も追加してください。
 ```
 
 ### 記録欄
@@ -354,14 +377,24 @@ curl -X DELETE http://localhost:8080/api/bookmarks/1
 ## ステップ 3.1: SQSクライアント作成
 
 ### やること
+- [ ] AWS SDK依存関係を追加
 - [ ] `pkg/sqs/client.go` 作成
 - [ ] ローカルSQS（LocalStack）起動
+
+### 依存関係追加
+```bash
+go get github.com/aws/aws-sdk-go-v2
+go get github.com/aws/aws-sdk-go-v2/config
+go get github.com/aws/aws-sdk-go-v2/service/sqs
+go mod tidy
+```
 
 ### AIへの依頼プロンプト
 ```
 ステップ3.1を実装したいです。
 docs/architecture/go-three-layer-architecture.md の pkg/sqs/client.go を参考に、
 SQSクライアントを作成してください。
+AWS SDKを使用するので、必要な依存関係も追加してください。
 また、ローカル開発用にLocalStackでSQSを起動する方法も教えてください。
 ```
 
@@ -399,14 +432,23 @@ docs/architecture/go-three-layer-architecture.md の repository/queue.go を参�
 ## ステップ 3.3: HTTPクライアント・OGPサービス実装
 
 ### やること
+- [ ] HTTPクライアント・HTMLパース依存関係を追加
 - [ ] `pkg/http/client.go` 作成
 - [ ] `service/ogp.go` 作成
+
+### 依存関係追加
+```bash
+go get github.com/go-resty/resty/v2
+go get github.com/PuerkitoBio/goquery
+go mod tidy
+```
 
 ### AIへの依頼プロンプト
 ```
 ステップ3.3を実装したいです。
 docs/architecture/go-three-layer-architecture.md の pkg/http/client.go と service/ogp.go を参考に、
 OGP取得機能を作成してください。
+restyとgoqueryを使用するので、必要な依存関係も追加してください。
 ```
 
 ### 記録欄
