@@ -168,9 +168,9 @@ docs/architecture/go-three-layer-architecture.md の model/bookmark.go と model
 ### 記録欄
 | 項目 | 内容 |
 |------|------|
-| 状態 | ⬜ 未着手 |
-| 完了日 | - |
-| 備考 | - |
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-04 |
+| 備考 | model/bookmark.go, model/errors.go作成完了。Bookmarkエンティティ、DTO、SQSメッセージ、OGP情報の定義完了 |
 
 ---
 
@@ -917,7 +917,7 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 - [x] 1.1 プロジェクト初期化
 - [x] 1.2 依存関係インストール
 - [x] 1.3 設定ファイル作成
-- [ ] 1.4 モデル定義
+- [x] 1.4 モデル定義
 - [ ] 1.5 DB接続設定
 
 ## Phase 2: API基本実装（CRUD）
