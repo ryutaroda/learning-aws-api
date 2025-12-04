@@ -2,6 +2,25 @@
 
 このドキュメントは、Go + Gin + SQS + ECS のブックマーク管理サービスを段階的に実装するためのガイドです。
 
+## 構成方針
+
+**モノリポ（Monorepo）+ マイクロサービス**構成を採用します。
+
+```
+learning-aws-api/              # 1つのリポジトリ
+├── services/
+│   ├── bookmark/              # bookmarkサービス（今回実装）
+│   ├── user/                  # userサービス（将来追加）
+│   └── notification/          # notificationサービス（将来追加）
+├── shared/                    # 共有コード（将来）
+├── ops/                       # デプロイ設定
+└── docs/                      # ドキュメント
+```
+
+各サービスは独立したコンテナとしてECSにデプロイされます。
+
+詳細は [docs/architecture/go-three-layer-architecture.md](docs/architecture/go-three-layer-architecture.md) を参照してください。
+
 ---
 
 ## 使い方
@@ -19,7 +38,7 @@
 
 | Phase | 内容 | 状態 |
 |-------|------|------|
-| Phase 1 | 環境構築・基本設定 | ⬜ 未着手 |
+| Phase 1 | 環境構築・基本設定 | 🔄 進行中 |
 | Phase 2 | API基本実装（CRUD） | ⬜ 未着手 |
 | Phase 3 | SQSワーカー実装 | ⬜ 未着手 |
 | Phase 4 | バッチ処理実装 | ⬜ 未着手 |
@@ -653,18 +672,24 @@ ECRにイメージをプッシュする手順を教えてください。
 
 ---
 
-## ステップ 5.4: ECSタスク定義・サービス作成
+## ステップ 5.4: bookmark-api用ECSタスク定義・サービス作成
 
 ### やること
 - [ ] ECSクラスター確認
-- [ ] タスク定義作成
-- [ ] サービス作成
+- [ ] `bookmark-api-task-stg` タスク定義作成
+- [ ] `bookmark-api-stg` サービス作成
+- [ ] ALB Target Group設定
 
 ### AIへの依頼プロンプト
 ```
 ステップ5.4を実装したいです。
-ブックマーク管理サービス用のECSタスク定義とサービスを作成する手順を教えてください。
-APIコンテナとWorkerコンテナのサイドカー構成にしたいです。
+bookmark-api用のECSタスク定義とサービスを作成する手順を教えてください。
+- サービス名: bookmark-api-stg
+- タスク定義: bookmark-api-task-stg
+- コンテナ名: api
+- MODE環境変数: api（デフォルト）
+- ポート: 8080
+- ALB Target Groupに接続
 ```
 
 ### 記録欄
@@ -676,11 +701,84 @@ APIコンテナとWorkerコンテナのサイドカー構成にしたいです�
 
 ---
 
-## ステップ 5.5: 動作確認（ECS）
+## ステップ 5.5: bookmark-worker用ECSタスク定義・サービス作成
+
+### やること
+- [ ] `bookmark-worker-task-stg` タスク定義作成
+- [ ] `bookmark-worker-stg` サービス作成
+- [ ] SQS Queue URL設定
+
+### AIへの依頼プロンプト
+```
+ステップ5.5を実装したいです。
+bookmark-worker用のECSタスク定義とサービスを作成する手順を教えてください。
+- サービス名: bookmark-worker-stg
+- タスク定義: bookmark-worker-task-stg
+- コンテナ名: worker
+- MODE環境変数: sqs
+- SQS Queue URLを環境変数で設定
+- ポートマッピングは不要（HTTPサーバーではない）
+```
+
+### 記録欄
+| 項目 | 内容 |
+|------|------|
+| 状態 | ⬜ 未着手 |
+| 完了日 | - |
+| 備考 | - |
+
+---
+
+## ステップ 5.6: bookmark-batch用ECSタスク定義・サービス作成（オプション）
+
+### やること
+- [ ] `bookmark-batch-task-stg` タスク定義作成
+- [ ] `bookmark-batch-stg` サービス作成（タスク数0）
+- [ ] EventBridge Scheduler設定（オプション）
+
+### AIへの依頼プロンプト
+```
+ステップ5.6を実装したいです。
+bookmark-batch用のECSタスク定義とサービスを作成する手順を教えてください。
+- サービス名: bookmark-batch-stg
+- タスク定義: bookmark-batch-task-stg
+- コンテナ名: batch
+- MODE環境変数: batch
+- TYPE環境変数: refresh-ogp または check-dead-links
+- タスク数: 0（スケジュール実行時のみ起動）
+- EventBridge Schedulerで定期実行する設定も教えてください
+```
+
+### 記録欄
+| 項目 | 内容 |
+|------|------|
+| 状態 | ⬜ 未着手 |
+| 完了日 | - |
+| 備考 | - |
+
+---
+
+## ステップ 5.7: 動作確認（ECS）
 
 ### やること
 - [ ] ALB経由でAPI疎通確認
-- [ ] ブックマーク作成 → OGP取得確認
+- [ ] ブックマーク作成 → OGP取得確認（Worker動作確認）
+- [ ] バッチ実行確認（オプション）
+
+### 確認手順
+```bash
+# API疎通確認
+curl https://your-alb-url/api/bookmarks
+
+# ブックマーク作成
+curl -X POST https://your-alb-url/api/bookmarks \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://go.dev","tags":["go"]}'
+
+# 少し待ってから確認（OGP取得完了後）
+curl https://your-alb-url/api/bookmarks/1
+# title, description, image_url が設定されているはず
+```
 
 ### 記録欄
 | 項目 | 内容 |
@@ -807,8 +905,10 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 - [ ] 5.1 Dockerfile作成
 - [ ] 5.2 db-migrator Dockerfile作成
 - [ ] 5.3 ECRプッシュ
-- [ ] 5.4 ECSタスク定義・サービス作成
-- [ ] 5.5 動作確認（ECS）
+- [ ] 5.4 bookmark-api用ECSタスク定義・サービス作成
+- [ ] 5.5 bookmark-worker用ECSタスク定義・サービス作成
+- [ ] 5.6 bookmark-batch用ECSタスク定義・サービス作成（オプション）
+- [ ] 5.7 動作確認（ECS）
 
 ## Phase 6: Slack連携（将来）
 - [ ] 6.1 マイグレーション追加

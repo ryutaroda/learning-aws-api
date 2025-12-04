@@ -67,12 +67,47 @@
 
 ---
 
+## リポジトリ構成: モノリポ + マイクロサービス
+
+本プロジェクトは**モノリポ（Monorepo）+ マイクロサービス**構成を採用します。
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  learning-aws-api（1つのリポジトリ）                        │
+│                                                             │
+│  services/                                                  │
+│  ├── bookmark/    → bookmarkコンテナ（ECS Service）        │
+│  ├── user/        → userコンテナ（ECS Service）将来追加    │
+│  └── notification/→ notificationコンテナ 将来追加          │
+│                                                             │
+│  各サービスは独立したコンテナとしてデプロイ                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### メリット
+
+| 項目 | 説明 |
+|------|------|
+| コード共有 | 共通ライブラリを`shared/`で管理可能 |
+| リファクタリング | 横断的な変更が1つのPRで完結 |
+| CI/CD | 統一されたパイプラインで管理 |
+| 依存関係 | go.workで複数モジュールを統合可能 |
+
+### デプロイ戦略
+
+| パターン | 説明 |
+|---------|------|
+| 全サービス同時 | `make deploy-all` |
+| 変更サービスのみ | CI/CDで変更検知 → 該当サービスのみデプロイ |
+
+---
+
 ## ディレクトリ構成
 
 ```
-myapp/
+learning-aws-api/                   # モノリポ
 ├── services/
-│   └── bookmark/                   # ブックマーク管理サービス
+│   ├── bookmark/                   # ブックマーク管理サービス（マイクロサービス1）
 │       ├── main.go                 # エントリーポイント（MODE切り替え）
 │       ├── go.mod
 │       ├── Dockerfile
@@ -101,13 +136,31 @@ myapp/
 │       │   ├── bookmark.go        # ブックマークリポジトリ（DB）
 │       │   └── queue.go            # キューリポジトリ（SQS）
 │       │
-│       └── pkg/                    # 共通ユーティリティ
+│       └── pkg/                    # サービス内共通ユーティリティ
 │           ├── database/
 │           │   └── postgres.go     # DB接続
 │           ├── sqs/
 │           │   └── client.go       # SQSクライアント
 │           └── http/
 │               └── client.go       # HTTPクライアント（OGP取得用）
+│
+│   ├── user/                       # ユーザー管理サービス（将来追加の例）
+│   │   ├── main.go
+│   │   ├── go.mod
+│   │   ├── Dockerfile
+│   │   ├── model/
+│   │   ├── handler/
+│   │   ├── service/
+│   │   └── repository/
+│   │
+│   └── notification/               # 通知サービス（将来追加の例）
+│       ├── main.go
+│       └── ...
+│
+├── shared/                         # 複数サービス間で共有するコード（将来）
+│   └── pkg/
+│       ├── logger/                 # 共通ロガー
+│       └── middleware/             # 共通ミドルウェア
 │
 ├── ops/
 │   ├── db-migrator/                # DBマイグレーション
@@ -121,28 +174,78 @@ myapp/
 │   │               ├── 000001_create_bookmarks.up.sql
 │   │               └── 000001_create_bookmarks.down.sql
 │   │
-│   └── ecspresso/                  # ECSデプロイ設定
-│       ├── bookmark-api/
+│   └── ecspresso/                  # ECSデプロイ設定（サービスごとに分離）
+│       ├── bookmark-api/           # bookmark APIサービス用
 │       │   └── stg/
 │       │       ├── ecspresso.yml
 │       │       ├── ecs-task-def.json
 │       │       └── ecs-service-def.json
-│       ├── bookmark-batch/
+│       ├── bookmark-worker/        # bookmark Workerサービス用
+│       │   └── stg/
+│       │       ├── ecspresso.yml
+│       │       ├── ecs-task-def.json
+│       │       └── ecs-service-def.json
+│       ├── bookmark-batch/         # bookmark Batchサービス用
 │       │   └── stg/
 │       │       ├── ecspresso.yml
 │       │       ├── ecs-task-def.json
 │       │       └── ecs-task-def.overrides.json
+│       ├── user-api/               # userサービス用（将来追加）
+│       │   └── stg/
+│       │       └── ...
 │       └── db-migrator/
 │           └── stg/
 │               ├── ecspresso.yml
 │               └── ecs-task-def.json
 │
+├── docs/                           # ドキュメント
+│   ├── architecture/
+│   │   └── go-three-layer-architecture.md
+│   └── implementation-guide.md
+│
 ├── .github/
 │   └── workflows/
-│       └── deploy.yaml             # CI/CD
+│       └── deploy.yaml             # CI/CD（サービスごとにデプロイ制御）
 │
-├── Makefile                        # ルートMakefile
+├── go.work                         # 複数モジュール統合（オプション）
+├── Makefile                        # ルートMakefile（全サービス管理）
 └── README.md
+```
+
+### go.work（複数モジュール統合）
+
+`go.work`を使うと、複数の`go.mod`を持つサービスを統合して開発できます：
+
+```go
+// go.work
+go 1.24
+
+use (
+    ./services/bookmark
+    ./services/user
+    ./shared
+)
+```
+
+### ルートMakefile例
+
+```makefile
+# Makefile
+.PHONY: build-all deploy-bookmark deploy-all
+
+# 全サービスビルド
+build-all:
+	cd services/bookmark && go build -o bin/server .
+	cd services/user && go build -o bin/server .
+
+# bookmarkサービスのみデプロイ
+deploy-bookmark:
+	cd ops/ecspresso/bookmark-api/stg && ecspresso deploy
+
+# 全サービスデプロイ
+deploy-all:
+	$(MAKE) deploy-bookmark
+	# $(MAKE) deploy-user  # 将来追加
 ```
 
 ---
@@ -224,9 +327,50 @@ Q: URLの形式チェックはどこ？
 
 | MODE | 用途 | 実行方法 |
 |------|------|----------|
-| (default) | APIサーバー | ECS Service |
-| sqs | SQSワーカー | ECS Service（サイドカー） |
-| batch | バッチ処理 | ecspresso run / EventBridge Scheduler |
+| (default) | APIサーバー | ECS Service（`bookmark-api-stg`） |
+| sqs | SQSワーカー | ECS Service（`bookmark-worker-stg`） |
+| batch | バッチ処理 | ECS Task（`bookmark-batch-stg`） / EventBridge Scheduler |
+
+**重要**: 各モードは**独立したECSサービス**としてデプロイします（サイドカーパターンではありません）。
+
+### ECS構成
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ECSクラスター: learning-cluster-stg                        │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ ECS Service: bookmark-api-stg                     │   │
+│  │   └── Task Definition: bookmark-api-task-stg      │   │
+│  │       └── Container: api (MODE=api)               │   │
+│  │           └── ALB → Target Group → Port 8080     │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ ECS Service: bookmark-worker-stg                  │   │
+│  │   └── Task Definition: bookmark-worker-task-stg  │   │
+│  │       └── Container: worker (MODE=sqs)          │   │
+│  │           └── SQS Queue → メッセージ処理           │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ ECS Service: bookmark-batch-stg                   │   │
+│  │   └── Task Definition: bookmark-batch-task-stg    │   │
+│  │       └── Container: batch (MODE=batch)           │   │
+│  │           └── EventBridge → 定期実行               │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### メリット
+
+| 項目 | 説明 |
+|------|------|
+| **独立スケーリング** | API/Worker/Batchを個別にスケール可能 |
+| **コスト最適化** | 用途別にリソースを最適化（API: 0.5 vCPU, Worker: 0.25 vCPU） |
+| **障害分離** | WorkerがクラッシュしてもAPIは影響なし |
+| **デプロイ柔軟性** | 各サービスを個別にデプロイ可能 |
+| **同じイメージ** | 1つのDockerイメージを`MODE`環境変数で切り替え |
 
 ---
 
