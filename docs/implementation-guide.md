@@ -224,9 +224,9 @@ GORMを使用するので、必要な依存関係も追加してください。
 ### 記録欄
 | 項目 | 内容 |
 |------|------|
-| 状態 | ⬜ 未着手 |
-| 完了日 | - |
-| 備考 | - |
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-07 |
+| 備考 | repository/bookmark.go作成完了。Save, FindByID, FindAll, Delete, Search, FindOldFetchedの6メソッド実装。GORM依存関係追加完了 |
 
 ---
 
@@ -247,9 +247,9 @@ FetchOgp, RefreshOldOgp, CheckDeadLinks は後で実装するのでスキップ�
 ### 記録欄
 | 項目 | 内容 |
 |------|------|
-| 状態 | ⬜ 未着手 |
-| 完了日 | - |
-| 備考 | - |
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-07 |
+| 備考 | service/bookmark.go作成完了。Create, GetByID, GetAll, Delete, Searchの5メソッド実装。OGP関連メソッドは後で実装 |
 
 ---
 
@@ -921,8 +921,8 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 - [x] 1.5 DB接続設定
 
 ## Phase 2: API基本実装（CRUD）
-- [ ] 2.1 Repository実装
-- [ ] 2.2 Service実装（OGP抜き）
+- [x] 2.1 Repository実装
+- [x] 2.2 Service実装（OGP抜き）
 - [ ] 2.3 Handler実装
 - [ ] 2.4 main.go実装
 - [ ] 2.5 マイグレーション作成・実行
