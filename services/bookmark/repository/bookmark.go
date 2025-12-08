@@ -5,6 +5,7 @@ import (
     "errors"
     "time"
 
+    "github.com/lib/pq"
     "gorm.io/gorm"
     "bookmark/model"
 )
@@ -50,7 +51,7 @@ func (r *BookmarkRepository) Search(ctx context.Context, query string, tags []st
     }
 
     if len(tags) > 0 {
-        db = db.Where("tags && ?", tags) // PostgreSQL配列の重複チェック
+        db = db.Where("tags && ?", pq.Array(tags)) // PostgreSQL配列の重複チェック
     }
 
     err := db.Order("created_at DESC").Find(&bookmarks).Error
