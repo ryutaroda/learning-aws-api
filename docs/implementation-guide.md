@@ -307,18 +307,24 @@ SQSクライアントとワーカー関連は後で追加するのでスキッ�
 
 ---
 
-## ステップ 2.5: マイグレーション作成・実行
+## ステップ 2.5: マイグレーション作成・実行（Docker版）
 
 ### やること
-- [ ] `ops/db-migrator/` ディレクトリ作成
-- [ ] マイグレーションファイル作成
+- [ ] `ops/db-migrator/Dockerfile` 作成
+- [ ] `ops/db-migrator/db/mydb/migrations/` ディレクトリ作成
+- [ ] マイグレーションファイル作成（up/down）
+- [ ] docker-compose.ymlにdb-migratorサービス追加
 - [ ] マイグレーション実行
 
 ### AIへの依頼プロンプト
 ```
 ステップ2.5を実装したいです。
-docs/architecture/go-three-layer-architecture.md の ops/db-migrator/ を参考に、
-マイグレーションファイルを作成し、実行する方法を教えてください。
+Dockerコンテナでマイグレーションを実行できるようにしたいです。
+以下を作成してください：
+1. ops/db-migrator/Dockerfile
+2. ops/db-migrator/db/mydb/migrations/000001_create_bookmarks.up.sql
+3. ops/db-migrator/db/mydb/migrations/000001_create_bookmarks.down.sql
+4. docker-compose.ymlへのdb-migratorサービス追加
 ```
 
 ### 記録欄
@@ -327,6 +333,138 @@ docs/architecture/go-three-layer-architecture.md の ops/db-migrator/ を参考�
 | 状態 | ⬜ 未着手 |
 | 完了日 | - |
 | 備考 | - |
+
+---
+
+## ステップ 2.5B: Goコードでマイグレーション実行（推奨）
+
+### やること
+- [ ] `ops/db-migrator/go.mod` 初期化
+- [ ] `ops/db-migrator/main.go` 作成
+- [ ] golang-migrate依存関係追加
+- [ ] `go run main.go` でマイグレーション実行
+
+### 実装手順
+
+#### 1. Go moduleを初期化
+```bash
+cd /Users/kanaokaryuutarou/Documents/GitHub/personal/learning-aws-workspace/learning-aws-api/ops/db-migrator
+
+# Go moduleを初期化
+go mod init db-migrator
+
+# 必要な依存関係を追加
+go get -u github.com/golang-migrate/migrate/v4
+go get -u github.com/golang-migrate/migrate/v4/database/postgres
+go get -u github.com/golang-migrate/migrate/v4/source/file
+go get -u github.com/lib/pq
+```
+
+#### 2. main.goを作成
+
+**作成するファイル:** `ops/db-migrator/main.go`
+
+**参考:** `docs/architecture/go-three-layer-architecture.md` の「### 18. ops/db-migrator/main.go」を参照してコードを実装してください。
+
+**実装内容のポイント:**
+- コマンドライン引数（`flag`パッケージ）でパスやコマンドを指定可能
+- 環境変数 `DATABASE_URL` からデータベース接続情報を取得
+- デフォルト値として `postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable` を使用
+- コマンド: `up` / `down` / `version`
+- ステップ指定: `-steps` で段階的なマイグレーション実行可能
+
+#### 3. 実行方法
+
+**A. マイグレーションUP（全て適用）**
+```bash
+cd /Users/kanaokaryuutarou/Documents/GitHub/personal/learning-aws-workspace/learning-aws-api/ops/db-migrator
+
+# デフォルト設定で実行（localhost:5432のPostgreSQLに接続）
+go run main.go
+
+# データベースURLを指定して実行
+go run main.go -database "postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable"
+```
+
+**B. マイグレーションDOWN（ロールバック）**
+```bash
+# 全てのマイグレーションをロールバック
+go run main.go -cmd down
+
+# 1ステップだけロールバック
+go run main.go -cmd down -steps 1
+```
+
+**C. 現在のバージョン確認**
+```bash
+go run main.go -cmd version
+```
+
+**D. ステップ指定でUP**
+```bash
+# 1ステップだけマイグレーション
+go run main.go -cmd up -steps 1
+```
+
+#### 4. 実行前の準備
+
+PostgreSQLコンテナが起動していることを確認：
+```bash
+cd /Users/kanaokaryuutarou/Documents/GitHub/personal/learning-aws-workspace/learning-aws-api/services/bookmark
+docker-compose up -d postgres
+```
+
+#### 5. 動作確認
+
+```bash
+# 1. 既存テーブル削除（クリーンな状態から開始）
+docker exec -it bookmark-postgres psql -U postgres -d bookmark_dev -c "DROP TABLE IF EXISTS bookmarks CASCADE;"
+docker exec -it bookmark-postgres psql -U postgres -d bookmark_dev -c "DROP TABLE IF EXISTS schema_migrations CASCADE;"
+
+# 2. マイグレーション実行
+cd /Users/kanaokaryuutarou/Documents/GitHub/personal/learning-aws-workspace/learning-aws-api/ops/db-migrator
+go run main.go
+
+# 3. テーブル確認
+docker exec -it bookmark-postgres psql -U postgres -d bookmark_dev -c "\dt"
+docker exec -it bookmark-postgres psql -U postgres -d bookmark_dev -c "\d bookmarks"
+```
+
+**期待される出力:**
+- `bookmarks` テーブルが存在
+- `schema_migrations` テーブルが存在（マイグレーション履歴管理用）
+- bookmarksテーブルに `id`, `url`, `title`, `description`, `tags` などのカラムが存在
+
+### AIへの依頼プロンプト
+```
+ステップ2.5Bを実装したいです。
+docs/architecture/go-three-layer-architecture.md の「### 18. ops/db-migrator/main.go」を参考に、
+ops/db-migrator/main.go を作成してください。
+
+要件:
+- コマンドライン引数（flag）でパス、データベースURL、コマンドを指定可能
+- 環境変数DATABASE_URLに対応
+- コマンド: up/down/version
+- ステップ指定可能（-steps）
+```
+
+### 補足: docker-composeとの比較
+
+| アプローチ | メリット | デメリット |
+|-----------|---------|-----------|
+| **docker-compose** | CI/CD統合が簡単、環境の再現性が高い | ローカル実行が複雑 |
+| **go run main.go** | ローカル開発が簡単、デバッグしやすい | 本番環境への適用には工夫が必要 |
+
+**推奨:**
+- **開発中**: `go run main.go` で快適に開発（ステップ2.5B）
+- **本番/CI/CD**: docker-composeまたはビルド済みバイナリを使用（ステップ2.5）
+
+### 記録欄
+| 項目 | 内容 |
+|------|------|
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-08 |
+| 備考 | ops/db-migrator/main.go作成完了。go run main.goでマイグレーション実行成功。bookmarksテーブルとschema_migrationsテーブルが作成された。README.mdも作成してコマンド集を整理 |
 
 ---
 
@@ -925,7 +1063,8 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 - [x] 2.2 Service実装（OGP抜き）
 - [x] 2.3 Handler実装
 - [x] 2.4 main.go実装
-- [ ] 2.5 マイグレーション作成・実行
+- [ ] 2.5 マイグレーション作成・実行（Docker版）
+- [x] 2.5B Goコードでマイグレーション実行（推奨）
 - [ ] 2.6 動作確認（CRUD）
 
 ## Phase 3: SQSワーカー実装

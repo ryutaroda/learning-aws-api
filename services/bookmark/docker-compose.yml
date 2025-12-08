@@ -16,5 +16,15 @@ services:
       timeout: 5s
       retries: 5
 
+  db-migrator:
+    build:
+      context: ../../ops/db-migrator
+      dockerfile: Dockerfile
+    container_name: bookmark-db-migrator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: -path /migrations -database postgresql://postgres:postgres@postgres:5432/bookmark_dev?sslmode=disable up
+
 volumes:
   postgres_data:

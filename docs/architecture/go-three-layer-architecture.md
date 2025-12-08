@@ -1380,10 +1380,14 @@ CMD ["./server"]
 
 ### 18. ops/db-migrator/main.go
 
+**用途**: `go run main.go` でマイグレーションを実行できるGo製ツール
+
 ```go
 package main
 
 import (
+    "flag"
+    "fmt"
     "log"
     "os"
 
@@ -1393,28 +1397,88 @@ import (
 )
 
 func main() {
-    databaseURL := os.Getenv("DATABASE_URL")
-    migrationsPath := "file://db/mydb/migrations"
+    // コマンドライン引数の定義
+    var (
+        migrationsPath = flag.String("path", "db/mydb/migrations", "マイグレーションファイルのパス")
+        databaseURL    = flag.String("database", "", "データベース接続URL")
+        command        = flag.String("cmd", "up", "実行するコマンド (up/down/version)")
+        steps          = flag.Int("steps", -1, "マイグレーションのステップ数（-1で全て）")
+    )
+    flag.Parse()
 
-    m, err := migrate.New(migrationsPath, databaseURL)
-    if err != nil {
-        log.Fatalf("Failed to create migrator: %v", err)
+    // 環境変数からデータベースURLを取得（フラグが指定されていない場合）
+    if *databaseURL == "" {
+        *databaseURL = os.Getenv("DATABASE_URL")
+        if *databaseURL == "" {
+            *databaseURL = "postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable"
+        }
     }
 
-    mode := os.Getenv("MODE")
-    switch mode {
+    // マイグレーションインスタンスの作成
+    m, err := migrate.New(
+        fmt.Sprintf("file://%s", *migrationsPath),
+        *databaseURL,
+    )
+    if err != nil {
+        log.Fatalf("マイグレーションの初期化に失敗: %v", err)
+    }
+    defer m.Close()
+
+    // コマンドの実行
+    switch *command {
+    case "up":
+        if *steps < 0 {
+            err = m.Up()
+        } else {
+            err = m.Steps(*steps)
+        }
     case "down":
-        if err := m.Down(); err != nil && err != migrate.ErrNoChange {
-            log.Fatalf("Migration down failed: %v", err)
+        if *steps < 0 {
+            err = m.Down()
+        } else {
+            err = m.Steps(-*steps)
         }
-        log.Println("Migration down completed")
+    case "version":
+        version, dirty, verr := m.Version()
+        if verr != nil {
+            log.Printf("バージョン取得エラー: %v", verr)
+            return
+        }
+        log.Printf("現在のバージョン: %d (dirty: %v)", version, dirty)
+        return
     default:
-        if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-            log.Fatalf("Migration up failed: %v", err)
+        log.Fatalf("不明なコマンド: %s (up/down/version のいずれかを指定)", *command)
+    }
+
+    // エラーハンドリング
+    if err != nil {
+        if err == migrate.ErrNoChange {
+            log.Println("マイグレーションの変更はありません")
+        } else {
+            log.Fatalf("マイグレーション実行エラー: %v", err)
         }
-        log.Println("Migration up completed")
+    } else {
+        log.Println("マイグレーションが正常に完了しました")
     }
 }
+```
+
+**実行例:**
+```bash
+# デフォルト設定で全てのマイグレーションをUP
+go run main.go
+
+# データベースURLを指定してUP
+go run main.go -database "postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable"
+
+# 全てのマイグレーションをロールバック
+go run main.go -cmd down
+
+# 1ステップだけロールバック
+go run main.go -cmd down -steps 1
+
+# 現在のバージョン確認
+go run main.go -cmd version
 ```
 
 ### 19. ops/db-migrator/db/mydb/migrations/000001_create_bookmarks.up.sql
