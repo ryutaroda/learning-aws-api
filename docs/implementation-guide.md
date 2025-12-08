@@ -278,9 +278,9 @@ Ginフレームワークを使用するので、必要な依存関係も追加�
 ### 記録欄
 | 項目 | 内容 |
 |------|------|
-| 状態 | ⬜ 未着手 |
-| 完了日 | - |
-| 備考 | - |
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-07 |
+| 備考 | handler/health.go, router.go, bookmark.go作成完了。6つのエンドポイント実装。Gin依存関係追加完了 |
 
 ---
 
@@ -923,7 +923,7 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 ## Phase 2: API基本実装（CRUD）
 - [x] 2.1 Repository実装
 - [x] 2.2 Service実装（OGP抜き）
-- [ ] 2.3 Handler実装
+- [x] 2.3 Handler実装
 - [ ] 2.4 main.go実装
 - [ ] 2.5 マイグレーション作成・実行
 - [ ] 2.6 動作確認（CRUD）
