@@ -49,6 +49,156 @@ learning-aws-api/              # 1つのリポジトリ
 
 # Phase 1: 環境構築・基本設定
 
+## ステップ 1.0: 開発環境セットアップ（direnv）
+
+### やること
+- [ ] direnvのインストール
+- [ ] シェル設定に追加
+- [ ] `.envrc`ファイル作成
+- [ ] 環境変数の確認
+
+### 手順
+
+#### 1. direnvのインストール
+
+```bash
+# Macの場合
+brew install direnv
+
+# Linuxの場合（Ubuntu/Debian）
+sudo apt install direnv
+
+# Linuxの場合（その他）
+curl -sfL https://direnv.net/install.sh | bash
+```
+
+#### 2. シェル設定に追加
+
+**zshの場合:**
+```bash
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**bashの場合:**
+```bash
+echo 'eval "$(direnv hook bash)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### 3. .envrcファイルの作成
+
+```bash
+cd services/bookmark
+
+# .envrcファイルを作成
+cat > .envrc << 'EOF'
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable"
+export APP_ENV="development"
+EOF
+
+# direnvを許可（初回のみ）
+direnv allow
+```
+
+#### 4. 動作確認
+
+```bash
+# 一度ディレクトリから出る
+cd ..
+
+# 再度入る（環境変数が自動設定される）
+cd bookmark
+
+# 環境変数が設定されていることを確認
+echo $DATABASE_URL
+# 出力: postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable
+
+echo $APP_ENV
+# 出力: development
+```
+
+**✅ ディレクトリに入ると自動的に環境変数が設定されます！**
+
+### direnvのメリット
+
+| メリット | 説明 |
+|---------|------|
+| **自動設定** | ディレクトリに入ると自動的に環境変数が設定される |
+| **自動クリア** | ディレクトリから出ると自動的に環境変数がクリアされる |
+| **プロジェクト分離** | プロジェクトごとに独立した環境変数を管理できる |
+| **チーム開発** | `.envrc.example`を共有すれば、チーム全体で同じ環境を構築可能 |
+
+### トラブルシューティング
+
+#### direnvが動作しない
+
+**症状:** ディレクトリに入っても環境変数が設定されない
+
+**解決策:**
+```bash
+# シェルの設定を確認
+cat ~/.zshrc | grep direnv  # zshの場合
+cat ~/.bashrc | grep direnv  # bashの場合
+
+# 設定がない場合は追加
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc  # zshの場合
+source ~/.zshrc
+
+# direnvを許可
+cd services/bookmark
+direnv allow
+```
+
+#### エラー: `direnv: error .envrc is blocked`
+
+**原因:** セキュリティのため、初回は明示的に許可が必要
+
+**解決策:**
+```bash
+direnv allow
+```
+
+### .gitignoreに追加
+
+`.envrc`には機密情報が含まれるため、Gitにコミットしないようにしましょう：
+
+```bash
+# プロジェクトルートで実行
+echo ".envrc" >> .gitignore
+```
+
+### .envrc.exampleの作成（チーム開発用）
+
+チームメンバーのために、テンプレートを作成：
+
+```bash
+cat > .envrc.example << 'EOF'
+# Database
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable"
+
+# Application
+export APP_ENV="development"
+
+# SQS (Phase 3で使用)
+# export SQS_QUEUE_URL="https://sqs.ap-northeast-1.amazonaws.com/123456789012/bookmark-queue"
+EOF
+```
+
+### 代替方法: godotenvを使用
+
+direnvをインストールしたくない場合は、`.env`ファイル + `godotenv`を使用することもできます。
+詳細は [services/bookmark/README.md](../services/bookmark/README.md) を参照してください。
+
+### 記録欄
+| 項目 | 内容 |
+|------|------|
+| 状態 | ⬜ 未着手 |
+| 完了日 | - |
+| 備考 | - |
+
+---
+
 ## ステップ 1.1: プロジェクト初期化
 
 ### やること
@@ -1052,6 +1202,7 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 # 完了チェックリスト
 
 ## Phase 1: 環境構築・基本設定
+- [ ] 1.0 開発環境セットアップ（direnv）
 - [x] 1.1 プロジェクト初期化
 - [x] 1.2 依存関係インストール
 - [x] 1.3 設定ファイル作成

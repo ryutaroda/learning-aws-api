@@ -1,0 +1,8 @@
+# Database
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bookmark_dev?sslmode=disable"
+
+# Application
+export APP_ENV="development"
+
+# SQS (Phase 3で使用)
+# export SQS_QUEUE_URL="https://sqs.ap-northeast-1.amazonaws.com/123456789012/bookmark-queue"
