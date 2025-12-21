@@ -742,9 +742,9 @@ restyとgoqueryを使用するので、必要な依存関係も追加してく�
 ### 記録欄
 | 項目 | 内容 |
 |------|------|
-| 状態 | ⬜ 未着手 |
-| 完了日 | - |
-| 備考 | - |
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-08 |
+| 備考 | resty/goquery依存関係追加完了。pkg/http/client.go作成完了（リトライロジック改善版）。service/ogp.go作成完了 |
 
 ---
 
@@ -1221,7 +1221,7 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 ## Phase 3: SQSワーカー実装
 - [x] 3.1 SQSクライアント作成
 - [x] 3.2 Queue Repository実装
-- [ ] 3.3 HTTPクライアント・OGPサービス実装
+- [x] 3.3 HTTPクライアント・OGPサービス実装
 - [ ] 3.4 BookmarkService拡張
 - [ ] 3.5 Worker実装
 - [ ] 3.6 main.go拡張（MODE対応）
