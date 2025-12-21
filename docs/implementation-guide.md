@@ -689,9 +689,9 @@ AWS SDKを使用するので、必要な依存関係も追加してください�
 ### 記録欄
 | 項目 | 内容 |
 |------|------|
-| 状態 | ⬜ 未着手 |
-| 完了日 | - |
-| 備考 | - |
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-08 |
+| 備考 | AWS SDK v2依存関係追加完了。pkg/sqs/client.go作成完了。docker-compose.ymlにLocalStack追加完了。.envrcに環境変数追加完了 |
 
 ---
 
@@ -711,9 +711,9 @@ docs/architecture/go-three-layer-architecture.md の repository/queue.go を参�
 ### 記録欄
 | 項目 | 内容 |
 |------|------|
-| 状態 | ⬜ 未着手 |
-| 完了日 | - |
-| 備考 | - |
+| 状態 | ✅ 完了 |
+| 完了日 | 2025-12-08 |
+| 備考 | repository/queue.go作成完了。SendBookmarkCreatedメソッド実装完了 |
 
 ---
 
@@ -1219,8 +1219,8 @@ Slack Slash Command を受け取る handler/slack.go を作成してください
 - [x] 2.6 動作確認（CRUD）
 
 ## Phase 3: SQSワーカー実装
-- [ ] 3.1 SQSクライアント作成
-- [ ] 3.2 Queue Repository実装
+- [x] 3.1 SQSクライアント作成
+- [x] 3.2 Queue Repository実装
 - [ ] 3.3 HTTPクライアント・OGPサービス実装
 - [ ] 3.4 BookmarkService拡張
 - [ ] 3.5 Worker実装
